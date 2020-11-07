@@ -1,0 +1,155 @@
+---
+title: "Midterm Exam"
+author: "Jason Lu"
+date: "11/2/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,out.width="0.9\\linewidth",dev="png",fig.align  = 'center')
+pacman::p_load(
+ggplot2,
+knitr,
+arm,
+data.table,
+foreign,
+gridExtra,
+car,
+stringr,
+rstan,
+rstanarm,
+zoo,
+dplyr,
+pwr
+)
+```
+
+## Instruction
+
+This is your midterm exam that you are expected to work on it alone.  You may NOT  discuss any of the content of your exam with anyone except your instructor. This includes text, chat, email and other online forums.  We expect you to respect and follow the [GRS Academic and Professional Conduct Code](http://www.bu.edu/cas/files/2017/02/GRS-Academic-Conduct-Code-Final.pdf). 
+
+Although you may NOT ask anyone directly, you are allowed to use external resources such as R codes on the Internet.  If you do use someone's code, please make sure you clearly cite the origin of the code.
+
+When you finish, please compile and submit the PDF file and the link to the GitHub repository that contains the entire analysis.
+
+
+## Introduction
+
+In this exam, you will act as both the client and the consultant for the data that you collected in the data collection exercise (20pts).  Please note that you are not allowed to change the data.  The goal of this exam is to demonstrate your ability to perform the statistical analysis that you learned in this class so far.  It is important to note that significance of the analysis is not the main goal of this exam but the focus is on the appropriateness of your approaches.
+
+### Data Description (10pts)
+
+Please explain what your data is about and what the comparison of interest is.  In the process, please make sure to demonstrate that you can load your data properly into R.
+
+```{r }
+# My data is about gathering spinach leaves with both hands with different methods to see if
+#   my left hand equally approximates quantities as my right hand.
+# The comparison of interest is left hand vs right hand.
+
+setwd("C:/Users/lujas/Desktop/MA 678")
+spinach <- read.csv("Data Collection Assignment Data Spinach.csv")
+```
+
+### EDA (10pts)
+
+Please create one (maybe two) figure(s) that highlights the contrast of interest.  Make sure you think ahead and match your figure with the analysis.  For example, if your model requires you to take a log, make sure you take log in the figure as well.
+
+```{r }
+# need to reformat my data
+left <- subset(spinach, select=-c(Right))
+left$hand <- "left"
+colnames(left) <- c("Method","count","hand")
+
+right <- subset(spinach, select=-c(Left))
+right$hand <- "right"
+colnames(right) <- c("Method","count","hand")
+
+data <- rbind(left, right)
+handful <- subset(data, Method=="Handful")
+pinch <- subset(data, Method=="Three-finger Pinch")
+nibble <- subset(data, Method=="Ring-pinky Nibble")
+
+# Figures
+boxplot(count~hand, data=handful, main="Handful")
+boxplot(count~hand, data=pinch, main="Three-finger Pinch")
+boxplot(count~hand, data=nibble, main="Ring-pinky Nibble")
+```
+
+### Power Analysis (10pts)
+
+Please perform power analysis on the project.  Use 80% power, the sample size you used and infer the level of effect size you will be able to detect.  Discuss whether your sample size was enough for the problem at hand.  Please note that method of power analysis should match the analysis.  Also, please clearly state why you should NOT use the effect size from the fitted model.
+
+```{r }
+pwr.t.test(n=5,d=NULL,sig.level=0.05,power=0.8,type = "paired")
+# d = 1.682
+# I do not think my sample size was large enough since 5 is a small size alongside a lot of
+# variance already in grabbing spinach leaves with a high variance corresponding to
+# sample size of 5 in each category.
+
+# I should not use the effect size from the fitted model since it is overestimated.
+```
+
+
+### Modeling (10pts)
+
+Please pick a regression model that best fits your data and fit your model.  Please make sure you describe why you decide to choose the model. Also, if you are using GLM, make sure you explain your choice of link function as well.
+```{r }
+fit <- glm(count ~ hand + Method, data=data)
+summary(fit)
+
+# I chose this model since I want to see if the hand I used significantly altered how many 
+#   leaves I picked, so a linear regression seems appropriate.
+# Used an identity link (default) because I want a linear regression
+```
+
+### Validation (10pts)
+
+Please perform a necessary validation and argue why your choice of the model is appropriate.
+
+```{r }
+pacman::p_load("boot")
+library(boot)
+
+cv.glm(data,fit)$delta[1]
+# Although my prediction error is seemingly large, I believe my choice of model is
+#   appropriate because I am testing for whether hand choice alters the count. 
+# I am not trying to find probability of hand (in which a logistic regression is needed).
+
+plot(fit)
+# residual plot (no fan shape) and normality (follows the line) not violated
+```
+
+
+### Inference (10pts)
+
+Based on the result so far please perform statistical inference to compare the comparison of interest.
+
+```{r }
+confint(fit)
+# Because the 95% CI contains 0, I fail to reject the null hypothesis.
+# H0: left and right hands equally approximate quantities
+```
+
+
+### Discussion (10pts)
+
+Please clearly state your conclusion and the implication of the result.
+
+  There is no difference in me approximating ingredients with my right hand than my left.
+  This means that I can use them interchangeably when cooking without having to worry
+    about self-measurements being different when using either hand.
+
+### Limitations and future opportunity. (10pts)
+
+Please list concerns about your analysis.  Also, please state how you might go about fixing the problem in your future study.
+
+  My sample size was small which led to a larger necessary effect size for significance.
+  It also led to higher standard deviations, limiting the validity of the experiment.
+    I can fix this by doing more samples.
+  My validation error was pretty large, also can be fixed by more samples in each method.
+  I can only limit this to spinach leaves, however further experiments done should involve
+    seasonings such as salt or pepper, as I did not have a precise scale to measure them.
+
+### Comments or questions
+If you have any comments or questions, please write them here.
+
